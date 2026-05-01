@@ -71,4 +71,14 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
+// Mongoose connection error handler
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB Connection Error:', err.message);
+});
+
+// Mongoose connection disconnect handler
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB Disconnected');
+});
+
 module.exports = app;
