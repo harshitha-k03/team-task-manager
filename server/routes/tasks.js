@@ -160,7 +160,7 @@ const { title, description, status, dueDate, project: projectId, assignedTo } = 
     const task = new Task({
       title,
       description,
-      status: status || 'todo',
+status: status || 'pending',
       dueDate: dueDate || null,
       project: projectId,
       assignedTo: assignedTo || null,
@@ -260,7 +260,7 @@ res.json({ message: 'Task deleted successfully' });
 // @desc   Update task status (only assigned user can update)
 // @access Private
 router.patch('/:id/status', auth, [
-  body('status').isIn(['todo', 'in-progress', 'done']).withMessage('Invalid status')
+body('status').isIn(['pending', 'todo', 'in-progress', 'done', 'completed']).withMessage('Invalid status')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
