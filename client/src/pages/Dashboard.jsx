@@ -23,15 +23,18 @@ import { useToast } from '../context/ToastContext'
 import api from '../services/api'
 
 const COLUMNS = [
+  { id: 'pending', title: 'Pending', icon: AlertCircle, color: 'text-yellow-500', bg: 'bg-yellow-100 dark:bg-yellow-900/30' },
   { id: 'todo', title: 'To Do', icon: Circle, color: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-800' },
   { id: 'in-progress', title: 'In Progress', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30' },
   { id: 'done', title: 'Done', icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100 dark:bg-green-900/30' }
 ]
 
 const STATUS_LABELS = {
+  'pending': 'Pending',
   'todo': 'To Do',
   'in-progress': 'In Progress',
-  'done': 'Done'
+  'done': 'Done',
+  'completed': 'Done'
 }
 
 function TaskCard({ task, index, onStatusChange, onDelete, isAdmin }) {
@@ -84,7 +87,13 @@ function TaskCard({ task, index, onStatusChange, onDelete, isAdmin }) {
                   <MoreVertical className="w-4 h-4 text-gray-400" />
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-10">
+<div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-10">
+                    <button
+                      onClick={() => handleStatusChange('pending')}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    >
+                      Move to Pending
+                    </button>
                     <button
                       onClick={() => handleStatusChange('todo')}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
@@ -243,8 +252,9 @@ export default function Dashboard() {
     return filtered
   }, [tasks, selectedProject, searchQuery])
 
-  const tasksByStatus = useMemo(() => {
+const tasksByStatus = useMemo(() => {
     const grouped = {
+      'pending': [],
       'todo': [],
       'in-progress': [],
       'done': []
@@ -491,9 +501,9 @@ export default function Dashboard() {
           )}
         </div>
       ) : (
-        /* Kanban Board */
+/* Kanban Board */
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {COLUMNS.map(column => (
               <div key={column.id} className="flex flex-col">
                 {/* Column header */}

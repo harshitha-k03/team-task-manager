@@ -1,205 +1,326 @@
-# 🚀 Railway Deployment Guide - Team Task Manager
+# Team Task Manager - Railway Deployment Guide
 
-## 📋 Overview
-
-This guide covers deploying the Team Task Manager application (React + Node.js + Express + MongoDB) on Railway.
+This guide walks you through deploying the Team Task Manager application on Railway.
 
 ---
 
-## Part 1: Backend Deployment Preparation
+## 📋 Pre-Deployment Checklist
 
-### 1.1 Environment Configuration ✅ ALREADY DONE
-The backend is configured to use environment variables:
-- `MONGODB_URI` - MongoDB Atlas connection string
-- `JWT_SECRET` - JWT signing secret
-- `PORT` - Server port (defaults to 5000)
-- `CLIENT_URL` - Whitelisted frontend URL for CORS
-- `NODE_ENV` - Environment mode
+- [ ] MongoDB Atlas account (free tier works)
+- [ ] Railway account
+- [ ] GitHub account (for connecting to Railway)
 
-### 1.2 Verify package.json Scripts ✅ ALREADY DONE
+---
+
+## � Part 1: Backend Configuration
+
+### 1.1 Environment Variables
+
+The backend uses these environment variables:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGODB_URI` | Yes | MongoDB Atlas connection string |
+| `JWT_SECRET` | Yes | Secret key for JWT tokens (min 32 chars) |
+| `PORT` | No | Server port (default: 5000) |
+| `CLIENT_URL` | Yes | Frontend URL for CORS |
+| `NODE_ENV` | No | Set to "production" for production |
+
+### 1.2 Update Server Code (Already Done ✓)
+
+The backend is already configured to use environment variables:
+
+- ✅ `process.env.MONGODB_URI` - MongoDB connection
+- ✅ `process.env.JWT_SECRET` - JWT authentication
+- ✅ `process.env.PORT` - Server port
+- ✅ `process.env.CLIENT_URL` - CORS configuration
+- ✅ `process.env.NODE_ENV` - Production mode
+
+### 1.3 Verify package.json Scripts
+
 ```json
-"scripts": {
-  "start": "node index.js",
-  "dev": "nodemon index.js"
+{
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  }
 }
 ```
 
-### 1.3 Deploy Backend to Railway
-
-**Steps:**
-1. Go to [Railway Dashboard](https://railway.app)
-2. Click "New Project" → "Deploy a backend service"
-3. Connect your GitHub repository
-4. Set root directory to `server`
-5. Add environment variables:
-   ```
-   MONGODB_URI=mongodb+srv://...
-   JWT_SECRET=your-super-secret-key
-   JWT_EXPIRE=7d
-   CLIENT_URL=https://yourfrontend.up.railway.app
-   NODE_ENV=production
-   ```
-6. Set start command: `node index.js`
-7. Click "Deploy"
+The server package.json already has the `"start"` script ✓
 
 ---
 
-## Part 2: Frontend Deployment Preparation
+## 🎨 Part 2: Frontend Configuration
 
-### 2.1 Create .env file for Frontend
-Create `client/.env` file (do NOT commit to Git):
-```
-VITE_API_URL=https://your-backend.up.railway.app/api
-```
+### 2.1 Environment Variables
 
-### 2.2 Verify API Configuration ✅ ALREADY DONE
-The client already uses:
+The frontend uses this environment variable:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_API_URL` | Yes | Backend API URL (e.g., https://your-api.railway.app) |
+
+### 2.2 The API Client (Already Configured ✓)
+
+Open `client/src/services/api.js`:
+
 ```javascript
-baseURL: import.meta.env.VITE_API_URL || ''
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || '',
+  // ...
+})
 ```
 
-### 2.3 Deploy Frontend to Railway
+This is already using `import.meta.env.VITE_API_URL` ✓
 
-**Steps:**
-1. Go to [Railway Dashboard](https://railway.app)
-2. Click "New Project" → "Deploy a frontend service"
-3. Connect your GitHub repository
-4. Set root directory to `client`
-5. Add environment variable:
+### 2.3 Verify vite.config.js
+
+```javascript
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  
+  return {
+    plugins: [react()],
+    server: {
+      port: 5173,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5000',
+          changeOrigin: true
+        }
+      }
+    },
+    build: {
+      outDir: 'dist',
+      sourcemap: false
+    },
+    define: {
+      'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || '')
+    }
+  }
+})
+```
+
+The vite.config.js already properly configures VITE_API_URL ✓
+
+---
+
+## 🚀 Part 3: Railway Deployment Steps
+
+### Step 1: Prepare MongoDB Atlas
+
+1. Go to https://www.mongodb.com/cloud/atlas
+2. Create a free account
+3. Create a free cluster (M0)
+4. Create a database user:
+   - Username: `admin` (or any username)
+   - Password: Generate a strong password and save it!
+5. Network Access: Allow All IPs (0.0.0.0/0)
+6. Get connection string:
    ```
-   VITE_API_URL=https://your-backend.up.railway.app/api
+   mongodb+srv://admin:<PASSWORD>@cluster.mongodb.net/teamtaskmanager?retryWrites=true&w=majority
    ```
-6. Set build command: `npm run build`
-7. Set output directory: `dist`
+7. Replace `<PASSWORD>` with your database user password
+
+### Step 2: Deploy Backend
+
+1. Go to https://railway.app
+2. Sign in with GitHub
+3. Click "New Project"
+4. Select "Deploy from GitHub repo"
+5. Choose your repository
+6. Select the `server` folder as root
+7. Add Environment Variables:
+
+| Key | Value |
+|-----|-------|
+| `MONGODB_URI` | `mongodb+srv://admin:<PASSWORD>@cluster.mongodb.net/teamtaskmanager?retryWrites=true&w=majority` |
+| `JWT_SECRET` | Generate a strong random string (min 32 chars) |
+| `CLIENT_URL` | Your frontend URL (get this after deploying frontend) |
+| `NODE_ENV` | `production` |
+| `PORT` | `5000` |
+
 8. Click "Deploy"
 
+**Note:** After deployment, Railway will give you a URL like `https://your-project-name.up.railway.app`. Copy this URL for the next step.
+
+### Step 3: Deploy Frontend
+
+1. Go to https://railway.app
+2. Click "New Project"
+3. Select "Deploy from GitHub repo"
+4. Choose your repository
+5. Keep root as `/` (frontend is in `client` folder)
+6. Click "Configure" and set:
+   - Build Command: `cd client && npm install && npm run build`
+   - Output Directory: `client/dist`
+7. Add Environment Variables:
+
+| Key | Value |
+|-----|-------|
+| `VITE_API_URL` | `https://your-backend-project.up.railway.app` |
+
+8. Click "Deploy"
+
+### Step 4: Update Backend CORS
+
+After deploying the frontend, go back to your backend Railway project:
+
+1. Go to Variables
+2. Update `CLIENT_URL` to your frontend URL (e.g., `https://your-frontend.up.railway.app`)
+3. Redeploy the backend
+
 ---
 
-## 📦 Example Environment Variables
+## 📋 Example Environment Variables
 
 ### Backend (.env)
-```
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority
-JWT_SECRET=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
-JWT_EXPIRE=7d
-CLIENT_URL=https://teamtaskmanager.up.railway.app
-NODE_ENV=production
-PORT=5000
-```
 
-### Frontend (.env)
-```
-VITE_API_URL=https://teamtaskmanager-api.up.railway.app/api
-```
-
----
-
-## 🔗 Integration Checklist
-
-After deployment, verify:
-
-- [ ] Backend is running at `https://your-backend.up.railway.app`
-- [ ] Frontend is running at `https://your-frontend.up.railway.app`
-- [ ] CORS is configured correctly (CLIENT_URL matches frontend URL)
-- [ ] VITE_API_URL points to backend API
-
-### Testing Commands:
 ```bash
-# Test backend health
-curl https://your-backend.up.railway.app/
+# MongoDB Atlas
+MONGODB_URI=mongodb+srv://admin:your_password@cluster.mongodb.net/teamtaskmanager?retryWrites=true&w=majority
 
-# Test login
-curl -X POST https://your-backend.up.railway.app/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
+# JWT Configuration
+JWT_SECRET=your-super-secret-key-min-32-characters-long!
+
+# Server Configuration
+PORT=5000
+NODE_ENV=production
+
+# Frontend URL (update after frontend deployment)
+CLIENT_URL=https://your-frontend.up.railway.app
+```
+
+### Frontend Environment
+
+```bash
+VITE_API_URL=https://your-backend.up.railway.app
 ```
 
 ---
 
-## 🛠️ Troubleshooting Guide
+## 🔧 Troubleshooting
 
-### Common Issues:
+### Common Issues
 
 #### 1. CORS Errors
-**Symptom:** Request blocked by CORS policy
-**Fix:** Update `CLIENT_URL` in backend environment variables to match your frontend URL exactly
 
-#### 2. 404 Not Found
-**Symptom:** API routes return 404
-**Fix:** Ensure `VITE_API_URL` includes `/api` suffix (e.g., `https://.../api`)
+**Problem:** Requests fail with CORS error
 
-#### 3. MongoDB Connection Failed
-**Symptom:** Cannot connect to database
-**Fix:** 
-- Verify `MONGODB_URI` is correct
-- Check Atlas network access settings (allow access from anywhere: 0.0.0.0/0)
+**Solution:**
+1. Go to Railway backend project
+2. Update `CLIENT_URL` environment variable to your frontend URL
+3. Redeploy backend
 
-#### 4. JWT Errors
-**Symptom:** Authentication not working
-**Fix:** Ensure `JWT_SECRET` is set and matches in backend config
+#### 2. Database Connection Failed
+
+**Problem:** MongoDB connection error
+
+**Solution:**
+1. Check `MONGODB_URI` is correct
+2. Verify database user credentials
+3. Check Network Access in Atlas (allow all IPs)
+4. Check cluster is not paused
+
+#### 3. API Not Found (404)
+
+**Problem:** Frontend can't reach backend
+
+**Solution:**
+1. Verify `VITE_API_URL` is set correctly in frontend
+2. Make sure backend URL doesn't have trailing slash
+3. Check backend deployed successfully
+
+#### 4. Token/Auth Issues
+
+**Problem:** Can't login or auth errors
+
+**Solution:**
+1. Verify `JWT_SECRET` is the same in backend
+2. Check `NODE_ENV` is set to `production`
+3. Clear browser localStorage and try again
 
 #### 5. Build Failed (Frontend)
-**Symptom:** Railway build fails
-**Fix:** 
-- Ensure node version is 18+ in package.json
-- Add engines field: `"engines": {"node": ">=18.0.0"}`
+
+**Problem:** Frontend build fails on Railway
+
+**Solution:**
+1. Make sure build command is correct:
+   ```
+   cd client && npm install && npm run build
+   ```
+2. Output directory should be: `client/dist`
+
+#### 6. App Not Loading
+
+**Problem:** White screen or app not loading
+
+**Solution:**
+1. Open browser console (F12)
+2. Check for errors
+3. Verify `VITE_API_URL` is correct
+4. Check Network tab for failed requests
+
+### Verify Deployment Checklist
+
+Run through these checks:
+
+- [ ] Backend URL returns JSON response
+- [ ] Can register a new user
+- [ ] Can login
+- [ ] Can create a project
+- [ ] Can add tasks
+- [ ] Can view dashboard
+- [ ] Can drag and drop tasks between columns
 
 ---
 
-## 📱 Testing End-to-End
+## 🔗 Integration Flow
 
-After deployment, test these features:
-
-1. **Auth:**
-   - [ ] Sign up new user
-   - [ ] Login with existing user
-   
-2. **Projects:**
-   - [ ] Create new project
-   - [ ] View projects list
-   - [ ] Add members to project
-
-3. **Tasks:**
-   - [ ] Create new task
-   - [ ] Assign task to member
-   - [ ] Update task status
-   - [ ] View "my-tasks" dashboard
-
-4. **Roles:**
-   - [ ] Admin can create/manage projects
-   - [ ] Member can view assigned tasks
-   - [ ] Member can update their task status
+```
+┌─────────────────┐        ┌─────────────────┐
+│   Frontend       │───────▶│   Backend       │
+│  (Railway)      │◀───────│  (Railway)      │
+│                │  API   │               │
+│ VITE_API_URL   │        │ MONGODB_URI   │
+│               │        │ JWT_SECRET   │
+└─────────────────┘        └─────────────────┘
+                                      │
+                                      ▼
+                               ┌─────────────────┐
+                               │  MongoDB Atlas  │
+                               │   (Cluster)   │
+                               └─────────────────┘
+```
 
 ---
 
-## 📝 Quick Deploy Commands (Railway CLI)
+## 📞 Quick Fix Commands
+
+If something goes wrong, try these:
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Deploy backend
-cd server
-railway init
-railway up
-
-# Deploy frontend  
-cd client
-railway init
-railway up
-
-# Check status
-railway status
+# Backend - Restart server
+railway up --restart
 
 # View logs
 railway logs
+
+# Redeploy
+railway deploy
 ```
 
 ---
 
-## ✅ DONE - Ready to Deploy!
+## ✅ Done!
 
-Your application is now configured for Railway deployment. Follow the steps above to deploy both backend and frontend.
+After completing these steps, your Team Task Manager should be fully functional on Railway.
+
+**Test your deployment:**
+1. Visit your frontend URL
+2. Register a new account
+3. Create a project
+4. Add tasks
+5. Test drag and drop
+6. Test the member dashboard
