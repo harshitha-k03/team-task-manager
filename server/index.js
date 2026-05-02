@@ -12,6 +12,9 @@ dotenv.config();
 
 const app = express();
 
+// 🔄 Trust proxy - needed when behind reverse proxy (e.g., Railway, nginx)
+app.set('trust proxy', 1);
+
 // 🔐 Security: Set secure HTTP headers
 app.use(helmet());
 
