@@ -209,11 +209,30 @@ router.post('/:id/members', auth, role('admin'), [
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Add member to project
-    if (!project.members.includes(userId)) {
-      project.members.push(userId);
-      await project.save();
+    // Check if user is already a member of this project
+    if (project.members.includes(userId)) {
+      return res.status(400).json({ message: 'User is already a member of this project' });
     }
+
+    // Check if user is already a member of another project (prevent duplicate membership)
+    const existingProjects = await Project.find({
+      $or: [
+        { members: userId },
+        { createdBy: userId }
+      ],
+      _id: { $ne: project._id }
+    });
+
+    if (existingProjects.length > 0) {
+      const projectNames = existingProjects.map(p => p.name).join(', ');
+      return res.status(400).json({ 
+        message: `User is already a member of another project: ${projectNames}. Please remove them from other projects first.`
+      });
+    }
+
+    // Add member to project
+    project.members.push(userId);
+    await project.save();
 
     const updatedProject = await Project.findById(project._id)
       .populate('createdBy', 'name email')

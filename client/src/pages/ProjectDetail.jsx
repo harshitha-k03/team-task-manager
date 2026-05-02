@@ -187,6 +187,7 @@ function TaskModal({ task, projectId, members, onClose, onSave, saving }) {
   const [priority, setPriority] = useState(task?.priority || 'medium')
   const [status, setStatus] = useState(task?.status || 'pending')
   const [assignedTo, setAssignedTo] = useState(task?.assignedTo?._id || task?.assignedTo || '')
+  const [dueDate, setDueDate] = useState(task?.dueDate ? task.dueDate.split('T')[0] : '')
   const [errors, setErrors] = useState({})
 
   const validate = () => {
@@ -201,7 +202,14 @@ function TaskModal({ task, projectId, members, onClose, onSave, saving }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!validate()) return
-    onSave({ title, description, priority, status, assignedTo: assignedTo || null })
+    onSave({ 
+      title, 
+      description, 
+      priority, 
+      status, 
+      assignedTo: assignedTo || null,
+      dueDate: dueDate ? new Date(dueDate).toISOString() : null
+    })
   }
 
   return (
@@ -291,20 +299,33 @@ function TaskModal({ task, projectId, members, onClose, onSave, saving }) {
             </select>
           </div>
 
-          {/* Status */}
+{/* Status - Note: 'done' is the valid value, 'completed' is mapped to it */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Status
             </label>
             <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              value={status === 'completed' ? 'done' : status}
+              onChange={(e) => setStatus(e.target.value === 'done' ? 'completed' : e.target.value)}
               className="input"
             >
               <option value="pending">Pending</option>
               <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
+              <option value="done">Completed</option>
             </select>
+          </div>
+
+          {/* Due Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Due Date
+            </label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="input"
+            />
           </div>
 
           {/* Submit */}
@@ -344,8 +365,9 @@ export default function ProjectDetail() {
   const [removingMember, setRemovingMember] = useState(null)
   const [filter, setFilter] = useState('all')
 
-  // Check if user is admin (project creator)
+// Check if user is admin (project creator) OR is a member of the project
   const isAdmin = user?.role === 'admin' || project?.createdBy?._id === user?._id || project?.createdBy === user?._id
+  const isMember = project?.members?.some(m => m._id === user?._id) || isAdmin
 
   // Get members list (including creator)
   const members = [
@@ -516,8 +538,8 @@ return (
         </button>
       </div>
 
-      {/* Team Members Section - Only show for admin */}
-      {isAdmin && (
+{/* Team Members Section - Show for both admins and members */}
+      {isMember && (
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -529,13 +551,15 @@ return (
                 ({members.length})
               </span>
             </div>
-            <button
-              onClick={() => setAddMemberModalOpen(true)}
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
-              <UserPlus className="w-4 h-4" />
-              Add Member
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setAddMemberModalOpen(true)}
+                className="btn-secondary flex items-center gap-2 text-sm"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add Member
+              </button>
+            )}
           </div>
 
           {/* Members List */}
@@ -595,21 +619,24 @@ return (
         </div>
       )}
 
-      {/* Filters */}
+{/* Filters */}
       <div className="flex items-center gap-2">
-        {['all', 'pending', 'in-progress', 'completed'].map(status => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === status
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            {status === 'all' ? 'All Tasks' : status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-          </button>
-        ))}
+        {['all', 'pending', 'in-progress', 'done'].map(status => {
+          const displayLabel = status === 'done' ? 'Completed' : (status === 'all' ? 'All Tasks' : status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()))
+          return (
+            <button
+              key={status}
+              onClick={() => setFilter(status === 'done' ? 'completed' : status)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                (status === 'done' ? filter === 'completed' : filter === status)
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              {displayLabel}
+            </button>
+          )
+        })}
       </div>
 
       {/* Tasks List */}

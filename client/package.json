@@ -11,6 +11,7 @@
   "dependencies": {
     "@hello-pangea/dnd": "^16.6.0",
     "axios": "^1.6.2",
+    "firebase": "^12.12.1",
     "framer-motion": "^10.16.16",
     "lucide-react": "^0.303.0",
     "react": "^18.2.0",

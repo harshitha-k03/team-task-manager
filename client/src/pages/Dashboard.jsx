@@ -37,10 +37,18 @@ const STATUS_LABELS = {
   'completed': 'Done'
 }
 
+const FILTERS = [
+  { id: 'all', label: 'All Tasks' },
+  { id: 'overdue', label: 'Overdue' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'in-progress', label: 'In Progress' },
+  { id: 'done', label: 'Done' }
+]
+
 function TaskCard({ task, index, onStatusChange, onDelete, isAdmin }) {
   const [menuOpen, setMenuOpen] = useState(false)
   
-  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done'
+const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !['done', 'completed'].includes(task.status)
   
   const formatDate = (date) => {
     if (!date) return null
@@ -232,7 +240,7 @@ export default function Dashboard() {
     }
   }
 
-  const filteredTasks = useMemo(() => {
+const filteredTasks = useMemo(() => {
     let filtered = tasks
     
     // Filter by project
@@ -249,8 +257,28 @@ export default function Dashboard() {
       )
     }
     
+    // Filter by status (including overdue)
+    if (filter === 'overdue') {
+      filtered = filtered.filter(task => 
+        task.dueDate && 
+        new Date(task.dueDate) < new Date() && 
+        !['done', 'completed'].includes(task.status)
+      )
+    } else if (filter !== 'all') {
+      filtered = filtered.filter(task => task.status === filter)
+    }
+    
     return filtered
-  }, [tasks, selectedProject, searchQuery])
+  }, [tasks, selectedProject, searchQuery, filter])
+
+  // Calculate overdue tasks count
+  const overdueTasksCount = useMemo(() => {
+    return tasks.filter(task => 
+      task.dueDate && 
+      new Date(task.dueDate) < new Date() && 
+      !['done', 'completed'].includes(task.status)
+    ).length
+  }, [tasks])
 
 const tasksByStatus = useMemo(() => {
     const grouped = {
@@ -354,34 +382,61 @@ const tasksByStatus = useMemo(() => {
 
 {/* Filters */}
       {isAdmin && projects.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Project filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              className="input py-2"
-            >
-              <option value="">All Projects</option>
-              {projects.map(project => (
-                <option key={project._id} value={project._id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="space-y-4">
+          {/* Project filter and Search */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Project filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="input py-2"
+              >
+                <option value="">All Projects</option>
+                {projects.map(project => (
+                  <option key={project._id} value={project._id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Search */}
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search tasks..."
-              className="input pl-10"
-            />
+            {/* Search */}
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search tasks..."
+                className="input pl-10"
+              />
+            </div>
+          </div>
+          
+          {/* Status Filters */}
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === f.id
+                    ? f.id === 'overdue' 
+                      ? 'bg-red-600 text-white'
+                      : 'bg-primary-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {f.label}
+                {f.id === 'overdue' && overdueTasksCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                    {overdueTasksCount}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -462,7 +517,7 @@ const tasksByStatus = useMemo(() => {
                   {/* Due Date */}
                   {task.dueDate && (
                     <div className={`flex items-center gap-1 text-xs ${
-                      new Date(task.dueDate) < new Date() && task.status !== 'done'
+new Date(task.dueDate) < new Date() && !['done', 'completed'].includes(task.status)
                         ? 'text-red-500 font-medium'
                         : 'text-gray-500 dark:text-gray-400'
                     }`}>
@@ -553,13 +608,19 @@ const tasksByStatus = useMemo(() => {
         </DragDropContext>
       )}
 
-      {/* Stats summary */}
+{/* Stats summary */}
       {tasks.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <div className="card p-4">
             <p className="text-sm text-gray-500 dark:text-gray-400">Total Tasks</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{tasks.length}</p>
           </div>
+          {overdueTasksCount > 0 && (
+            <div className="card p-4 border-red-300 dark:border-red-700">
+              <p className="text-sm text-red-600 dark:text-red-400">Overdue</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{overdueTasksCount}</p>
+            </div>
+          )}
           <div className="card p-4">
             <p className="text-sm text-gray-500 dark:text-gray-400">To Do</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{tasksByStatus.todo.length}</p>

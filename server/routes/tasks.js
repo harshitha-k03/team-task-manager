@@ -186,7 +186,12 @@ status: status || 'pending',
 // @access Private
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { title, description, status, dueDate, assignedTo } = req.body;
+    let { title, description, status, dueDate, assignedTo } = req.body;
+
+    // Convert 'completed' to 'done' for compatibility with DB schema
+    if (status === 'completed') {
+      status = 'done';
+    }
 
     const task = await Task.findById(req.params.id);
 
@@ -194,13 +199,18 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check if user has access
+// Check if user has access
     const project = await Project.findById(task.project);
     const isCreator = task.createdBy.toString() === req.user._id.toString();
     const isAdmin = req.user.role === 'admin';
     const isAssigned = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
 
-    // Members can only update status
+    // Deny access if neither creator, admin, nor assigned
+    if (!isCreator && !isAdmin && !isAssigned) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Assigned members can only update status
     if (!isCreator && !isAdmin) {
       if (status) {
         task.status = status;
@@ -268,7 +278,12 @@ body('status').isIn(['pending', 'todo', 'in-progress', 'done', 'completed']).wit
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { status } = req.body;
+    // Convert 'completed' to 'done' for compatibility with DB schema
+    let { status } = req.body;
+    if (status === 'completed') {
+      status = 'done';
+    }
+    
     const task = await Task.findById(req.params.id);
 
     if (!task) {
